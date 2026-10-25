@@ -22,3 +22,8 @@ Use **Установить приложение** in the header. In Chrome/Edge,
 Tasks can repeat daily, on selected weekdays, or monthly, with an optional end date. Edit or skip a single occurrence or change the whole series. Completion belongs to one occurrence.
 
 The separate Journal tab supports private thoughts, a five-level mood check-in, photos and files (up to 10 per entry, 5 MB each). Photos are resized without modifying originals. Drafts and attachments stay in IndexedDB. Connected GitHub sync uploads attachments to the private daylane-data repository before the journal record. Backups include repeat rules, journal records and attachments.
+
+## Reminders
+Choose an alert time in each task (at the start, 5/10/15/30 minutes, 1/2 hours or 1 day before). The Reminders panel enables device notifications and offers a test. No browser permission is requested automatically. Repeating tasks and single-instance exceptions are supported; completed/cancelled instances do not alert.
+
+Local reminders require Daylane to remain open and can be delayed by browser/OS background throttling. This static GitHub Pages app does not send push when closed. For that use case, export/import the generated iCalendar file with VALARM alerts into your system calendar. Calendar exports are independent copies, not a live subscription. On iPhone, an .ics attachment can be imported through Apple Mail.
