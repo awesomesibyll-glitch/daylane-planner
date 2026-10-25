@@ -1,0 +1,9 @@
+{
+  "name": "daylane-planner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/prepare-pages.cjs",
+    "test": "node scripts/test-github.mjs"
+  }
+}
