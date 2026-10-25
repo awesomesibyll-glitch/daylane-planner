@@ -17,3 +17,8 @@ GitHub Pages source: main branch, /docs folder. Public application code contains
 
 ## Install as an app
 Use **Установить приложение** in the header. In Chrome/Edge, confirm installation; in iPhone/iPad Safari, choose Share → Add to Home Screen. Daylane opens in its own window. The app shell and schedule work offline after the first successful visit; cross-device sync requires a connection and the one-time GitHub setup above.
+
+## Recurring plans and journal
+Tasks can repeat daily, on selected weekdays, or monthly, with an optional end date. Edit or skip a single occurrence or change the whole series. Completion belongs to one occurrence.
+
+The separate Journal tab supports private thoughts, a five-level mood check-in, photos and files (up to 10 per entry, 5 MB each). Photos are resized without modifying originals. Drafts and attachments stay in IndexedDB. Connected GitHub sync uploads attachments to the private daylane-data repository before the journal record. Backups include repeat rules, journal records and attachments.

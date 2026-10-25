@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/prepare-pages.cjs",
-    "test": "node scripts/test-github.mjs"
+    "test": "node scripts/test-all.mjs"
   }
 }
