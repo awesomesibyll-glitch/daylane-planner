@@ -32,3 +32,6 @@ Local reminders require Daylane to remain open and can be delayed by browser/OS 
 A separate Habits section provides a weekly check-in grid, selected weekdays, a start date, colour/icon choices, current streaks and weekly progress. Rest days do not break streaks; an unfinished current day does not break the streak prematurely. Future dates cannot be checked. Schedule edits preserve past schedules and marks; habits can be archived/restored without removing history.
 
 Each daily check-in has its own deterministic record ID, so offline check-ins on different dates merge across devices. Habit records and history are included in normal JSON backups. They do not appear as timed events, diary entries or calendar alarms.
+
+## Phone layouts
+Phone habit rows become compact cards with all seven day check-ins visible. Forms are constrained to the visible viewport (including keyboard resize), touch targets are enlarged, and calendar scroll position survives section changes.
