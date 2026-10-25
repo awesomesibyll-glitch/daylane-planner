@@ -1,4 +1,4 @@
-const CACHE='daylane-app-73039395c2f9';
+const CACHE='daylane-app-f5663a9b5e2c';
 const ASSETS=['./','./index.html','./model.js','./files.js','./journal.js','./journal.css','./backup.js','./app.js','./sync.js','./github-provider.js','./app-install.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);await cache.addAll(ASSETS.map(url=>new Request(url,{cache:'reload'})));await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('daylane-app-')&&key!==CACHE)await caches.delete(key);await self.clients.claim()})()));
