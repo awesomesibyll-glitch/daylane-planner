@@ -14,3 +14,6 @@ Changes are queued offline and sync when a connection returns. Separate events m
 No dependencies or build service are required. The deployed static application is in `docs/`. The editable sources are in `client/`; run `node scripts/prepare-pages.cjs` to refresh `docs/` and `node scripts/test-github.mjs` for sync tests.
 
 GitHub Pages source: main branch, /docs folder. Public application code contains no personal plans or access tokens.
+
+## Install as an app
+Use **Установить приложение** in the header. In Chrome/Edge, confirm installation; in iPhone/iPad Safari, choose Share → Add to Home Screen. Daylane opens in its own window. The app shell and schedule work offline after the first successful visit; cross-device sync requires a connection and the one-time GitHub setup above.
