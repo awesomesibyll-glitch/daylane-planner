@@ -27,3 +27,8 @@ The separate Journal tab supports private thoughts, a five-level mood check-in, 
 Choose an alert time in each task (at the start, 5/10/15/30 minutes, 1/2 hours or 1 day before). The Reminders panel enables device notifications and offers a test. No browser permission is requested automatically. Repeating tasks and single-instance exceptions are supported; completed/cancelled instances do not alert.
 
 Local reminders require Daylane to remain open and can be delayed by browser/OS background throttling. This static GitHub Pages app does not send push when closed. For that use case, export/import the generated iCalendar file with VALARM alerts into your system calendar. Calendar exports are independent copies, not a live subscription. On iPhone, an .ics attachment can be imported through Apple Mail.
+
+## Habit tracker
+A separate Habits section provides a weekly check-in grid, selected weekdays, a start date, colour/icon choices, current streaks and weekly progress. Rest days do not break streaks; an unfinished current day does not break the streak prematurely. Future dates cannot be checked. Schedule edits preserve past schedules and marks; habits can be archived/restored without removing history.
+
+Each daily check-in has its own deterministic record ID, so offline check-ins on different dates merge across devices. Habit records and history are included in normal JSON backups. They do not appear as timed events, diary entries or calendar alarms.
