@@ -1,0 +1,28 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const code=fs.readFileSync('client/Daylane.js','utf8'),tokenKey='daylane-widget-read-token-v1',cacheName='/library/daylane-widget-snapshot-v1.json';
+const task={kind:'task',id:'eng',date:'2026-10-19',title:'Английский',start:'11:00',end:'12:00',category:'study',notes:'PRIVATE_NOTE',done:false,repeat:{frequency:'weekly',days:[1]},exceptions:{'2026-10-26':{title:'Разговорная практика',start:'12:00',end:'13:00'}}};
+const habit={kind:'habit',id:'read',date:'2026-10-19',title:'Читать',days:[1],colour:'sage',icon:'book',notes:'PRIVATE_HABIT_NOTE',archived:false,updatedAt:'2026-10-26T09:00:00Z'};
+const check={kind:'habit-check',id:'hcheck-read-2026-10-26',habitId:'read',date:'2026-10-26',done:true,updatedAt:'2026-10-26T09:00:00Z'};
+const queue={kind:'inbox',id:'later',date:'2026-10-26',title:'Подготовить доклад',notes:'PRIVATE_QUEUE_NOTE',category:'study',done:false,horizon:'none',planDate:null,updatedAt:'2026-10-26T09:00:00Z'};
+const journal={kind:'journal',id:'diary',date:'2026-10-26',title:'SECRET_DIARY',text:'PRIVATE_THOUGHTS',mood:4,attachments:[],updatedAt:'2026-10-26T09:00:00Z'};
+const records=[task,habit,check,queue,journal,{...queue,id:'finished',title:'Уже сделано',done:true},{...habit,id:'archive',title:'Архивная',archived:true}];
+async function run({keys=new Map([[tokenKey,'test-only']]),files=new Map(),parameter='today',family='medium',status=200,offline=false,inApp=false,choices=[],now='2026-10-26T10:30:00'}={}){
+ let widget,complete=false;const calls=[],messages=[];class FixedDate extends Date{constructor(...args){super(...(args.length?args:[now]))}static now(){return new Date(now).getTime()}}
+ class Stack{constructor(texts=[]){this.texts=texts}addText(value){this.texts.push(String(value));return{}}addSpacer(){}addStack(){return new Stack(this.texts)}}
+ class Widget extends Stack{setPadding(){}async presentMedium(){this.preview=true}}
+ class Request{constructor(url){assert.equal(url,'https://api.github.com/repos/awesomesibyll-glitch/daylane-data/contents/planner.json');this.url=url}async loadString(){calls.push(this);assert.equal(this.method,'GET');assert.equal(this.headers.Authorization,'Bearer test-only');assert.equal(this.onRedirect({url:'https://evil.invalid'}),null);if(offline)throw Error('network');this.response={statusCode:status};return JSON.stringify({events:Object.fromEntries(records.map(e=>[e.id,e]))})}}
+ class Alert{addAction(){}addCancelAction(){}addSecureTextField(){}textFieldValue(){return 'test-only'}async presentAlert(){messages.push(this.message);return choices.shift()??0}async presentSheet(){return choices.shift()??-1}}
+ const ctx=vm.createContext({Date:FixedDate,Request,Alert,ListWidget:Widget,Font:{systemFont:n=>n,semiboldSystemFont:n=>n},Color:class{constructor(hex){this.hex=hex}},Keychain:{contains:k=>keys.has(k),get:k=>keys.get(k),set:(k,v)=>keys.set(k,v),remove:k=>keys.delete(k)},FileManager:{local:()=>({libraryDirectory:()=>'/library',joinPath:(a,b)=>a+'/'+b,fileExists:p=>files.has(p),readString:p=>files.get(p),writeString:(p,s)=>files.set(p,s),remove:p=>files.delete(p)})},config:{runsInApp:inApp,widgetFamily:family},args:{widgetParameter:parameter},Script:{setWidget:w=>widget=w,complete:()=>complete=true},URLSearchParams,console});
+ await vm.runInContext('(async()=>{'+code+'})()',ctx);assert(complete);return{widget,calls,keys,files,messages};
+}
+const today=await run();assert(today.widget.texts.includes('Разговорная практика'));assert(!today.widget.texts.includes('Английский'));assert(today.widget.url.endsWith('?view=planner'));assert.equal(today.calls.length,1);const cache=today.files.get(cacheName);for(const secret of ['test-only','PRIVATE_','SECRET_DIARY','notes','attachments'])assert(!cache.includes(secret));
+const habits=await run({parameter:'habits'});assert(habits.widget.texts.includes('Читать'));assert(habits.widget.texts.some(t=>t.includes('1 / 1 выполнено')));assert(!habits.widget.texts.includes('Архивная'));assert(habits.widget.url.endsWith('?view=habits'));
+const queueWidget=await run({parameter:'queue'});assert(queueWidget.widget.texts.includes('Подготовить доклад'));assert(!queueWidget.widget.texts.includes('Уже сделано'));assert(queueWidget.widget.texts.includes('Учёба'));assert(queueWidget.widget.url.endsWith('?view=inbox'));
+const offline=await run({offline:true,files:today.files});assert(offline.widget.texts.includes('Разговорная практика'));assert(offline.widget.texts.includes('Нет связи · сохранённая копия'));
+const old=await run({offline:true,files:today.files,now:'2026-10-27T10:30:00'});assert(old.widget.texts.some(t=>t.startsWith('Копия за ')));
+const denied=await run({status:403,files:today.files});assert(denied.widget.texts.includes('Обнови ключ в Scriptable'));const noKey=await run({keys:new Map()});assert.equal(noKey.calls.length,0);assert(noKey.widget.texts.includes('Подключи планер'));
+const first=await run({keys:new Map(),inApp:true,choices:[0,0]});assert.equal(first.keys.get(tokenKey),'test-only');assert(first.widget.preview);
+const failed=await run({keys:new Map(),inApp:true,status:403,choices:[0,0]});assert(!failed.keys.has(tokenKey));
+const disconnected=await run({inApp:true,files:new Map(today.files),choices:[4,0]});assert(!disconnected.keys.has(tokenKey));assert(!disconnected.files.has(cacheName));
+for(const family of ['small','large','extraLarge'])assert((await run({family})).widget);
+console.log('PASS: Scriptable GET-only private sync, recurring exceptions, habit marks, unscheduled category, no journal/notes/token in cache, offline and old-day labels, denied token, first setup, disconnect, widget sizes and links');
