@@ -34,6 +34,17 @@ function editSchedule(previous,days,today){const from=today<previous.date?previo
 return{day,shift,week,daysAt,scheduled,checked,checkId,progress,streak,editSchedule};
 })();
 
+// Future system notifications. Same occurrence ID is reused when an event is edited.
+const DaylanePhonePlan=(()=>{
+function upcoming(records,now=new Date()){
+ const time=now.getTime(),until=time+14*86400000,days=[];
+ for(let i=0;i<16;i++){const d=new Date(now);d.setDate(d.getDate()+i);days.push(DaylaneHabits.day(d))}
+ return DaylaneModel.tasksForDates(records.filter(DaylaneModel.validRecord),days).filter(e=>!e.done&&[0,5,10,15,30,60,120,1440].includes(e.reminder)).map(e=>({id:'daylane-phone-'+(e._seriesId||e.id)+'-'+(e._occurrenceDate||e.date),title:e.title,date:e.date,start:e.start,end:e.end,at:new Date(e.date+'T'+e.start+':00').getTime()-e.reminder*60000})).filter(e=>e.at>time&&e.at<=until).sort((a,b)=>a.at-b.at||a.id.localeCompare(b.id));
+}
+function valid(a){return a&&typeof a.id==='string'&&a.id.startsWith('daylane-phone-')&&typeof a.title==='string'&&a.title.length<=150&&DaylaneModel.date(a.date)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(a.start)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(a.end)&&Number.isFinite(a.at)}
+return{upcoming,valid};
+})();
+
 // Shared, read-only data for Scriptable widgets. No journal text, photos, notes or keys in the snapshot.
 const DaylaneWidget=(()=>{
 const categories={study:'Учёба',work:'Работа',personal:'Личное',rest:'Отдых'};
@@ -43,11 +54,33 @@ function snapshot(records,now=new Date()){
  const tasks=DaylaneModel.tasksForDates(valid,[date]).filter(e=>!e.done&&e.end>clock).sort((a,b)=>a.start.localeCompare(b.start)||a.title.localeCompare(b.title,'ru')).map(e=>({title:e.title,start:e.start,end:e.end,category:e.category}));
  const habits=valid.filter(e=>e.kind==='habit'&&!e.archived&&DaylaneHabits.scheduled(e,date)).map(e=>({title:e.title,done:DaylaneHabits.checked(valid,e.id,date)})).sort((a,b)=>Number(a.done)-Number(b.done)||a.title.localeCompare(b.title,'ru'));
  const queue=valid.filter(e=>e.kind==='inbox'&&!e.done).sort((a,b)=>a.date.localeCompare(b.date)||a.title.localeCompare(b.title,'ru')).map(e=>({title:e.title,category:e.category}));
- return {version:1,date,fetchedAt:now.toISOString(),tasks,habits,queue};
+ return {version:1,date,fetchedAt:now.toISOString(),tasks,habits,queue,alarms:DaylanePhonePlan.upcoming(valid,now)};
 }
-function validSnapshot(s){return s&&s.version===1&&DaylaneModel.date(s.date)&&typeof s.fetchedAt==='string'&&!isNaN(Date.parse(s.fetchedAt))&&Array.isArray(s.tasks)&&s.tasks.every(e=>e&&typeof e.title==='string'&&typeof e.start==='string'&&typeof e.end==='string'&&categories[e.category])&&Array.isArray(s.habits)&&s.habits.every(e=>e&&typeof e.title==='string'&&typeof e.done==='boolean')&&Array.isArray(s.queue)&&s.queue.every(e=>e&&typeof e.title==='string'&&categories[e.category])}
+function validSnapshot(s){return s&&(!s.alarms||(Array.isArray(s.alarms)&&s.alarms.every(DaylanePhonePlan.valid)))&&s.version===1&&DaylaneModel.date(s.date)&&typeof s.fetchedAt==='string'&&!isNaN(Date.parse(s.fetchedAt))&&Array.isArray(s.tasks)&&s.tasks.every(e=>e&&typeof e.title==='string'&&typeof e.start==='string'&&typeof e.end==='string'&&categories[e.category])&&Array.isArray(s.habits)&&s.habits.every(e=>e&&typeof e.title==='string'&&typeof e.done==='boolean')&&Array.isArray(s.queue)&&s.queue.every(e=>e&&typeof e.title==='string'&&categories[e.category])}
 return {snapshot,validSnapshot,categories};
 })();
+
+// Optional Scriptable local notifications; no server or extra network endpoint.
+const DAYLANE_PHONE_KEY='daylane-phone-enabled-v1';
+async function daylaneClearPhone(){const pending=await Notification.allPending();const ids=pending.filter(n=>n.identifier?.startsWith('daylane-phone-')).map(n=>n.identifier);if(ids.length)await Notification.removePending(ids)}
+async function daylaneSyncPhone(snapshot){
+ const now=Date.now(),pending=await Notification.allPending(),ours=pending.filter(n=>n.identifier?.startsWith('daylane-phone-')&&n.identifier!=='daylane-phone-test'),others=pending.length-ours.length,capacity=Math.max(0,Math.min(40,60-others));
+ const candidates=(snapshot.alarms||[]).filter(DaylanePhonePlan.valid).filter(a=>a.at>now).sort((a,b)=>a.at-b.at),selected=candidates.slice(0,capacity),wanted=new Set(selected.map(a=>a.id));
+ const obsolete=ours.filter(n=>!wanted.has(n.identifier)).map(n=>n.identifier);if(obsolete.length)await Notification.removePending(obsolete);
+ const existing=new Map(ours.map(n=>[n.identifier,n]));let changed=0;
+ for(const a of selected){const signature=JSON.stringify([a.title,a.date,a.start,a.end,a.at]);if(existing.get(a.id)?.userInfo?.daylaneSignature===signature)continue;
+  const n=new Notification();n.identifier=a.id;n.title=a.title;n.subtitle='Daylane · '+a.start+'–'+a.end;n.body=new Date(a.date+'T12:00:00').toLocaleDateString('ru',{day:'numeric',month:'long'});n.sound='default';n.threadIdentifier='daylane';n.openURL=DAYLANE_URL+'?view=planner&day='+a.date;n.userInfo={daylaneSignature:signature};n.setTriggerDate(new Date(a.at));await n.schedule();changed++;
+ }
+ return {count:selected.length,total:candidates.length,changed,last:selected.length?selected[selected.length-1].at:null};
+}
+async function daylanePhoneMenu(){
+ const enabled=Keychain.contains(DAYLANE_PHONE_KEY),menu=new Alert();menu.title='Напоминания на iPhone / iPad';menu.message='Система будет показывать заранее назначенные уведомления, даже если Daylane и Scriptable закрыты. Загружаются до 40 ближайших напоминаний на 14 дней. После переноса, отмены или выполнения дел обнови их здесь. Виджет тоже обновляет их при своей загрузке, но iOS выбирает время обновления.';
+ menu.addAction(enabled?'Обновить напоминания':'Включить напоминания');menu.addAction('Проверить уведомление');if(enabled)menu.addAction('Отключить напоминания');menu.addCancelAction('Назад');const choice=await menu.presentSheet();if(choice<0)return;
+ if(choice===2&&enabled){Keychain.remove(DAYLANE_PHONE_KEY);await daylaneClearPhone();await daylaneMessage('Напоминания отключены','Ожидающие уведомления Daylane удалены. Другие сценарии Scriptable не затронуты.');return}
+ if(choice===1){const n=new Notification();n.identifier='daylane-phone-test';n.title='Daylane · проверка';n.body='Напоминания телефона подключены.';n.sound='default';n.openURL=DAYLANE_URL;n.setTriggerDate(new Date(Date.now()+10000));try{await n.schedule();await daylaneMessage('Проверка через 10 секунд','Разреши уведомления Scriptable в настройках iPhone/iPad. Режим «Фокусирование», беззвучный режим и сводка могут влиять на показ и звук.')}catch{await daylaneMessage('Не удалось включить уведомления','Проверь разрешение для Scriptable: Настройки → Уведомления.')}return}
+ try{const snapshot=await daylaneRead(Keychain.get(DAYLANE_KEY)),result=await daylaneSyncPhone(snapshot);Keychain.set(DAYLANE_PHONE_KEY,'yes');daylaneSave(snapshot);await daylaneMessage('Напоминания переданы системе','Назначено: '+result.count+(result.total>result.count?' из '+result.total:'')+'. '+(result.last?'Последнее — '+new Date(result.last).toLocaleString('ru',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'. ':'')+'Проверь разрешение уведомлений для Scriptable. Если задач нет, выбери «Напомнить» у дела в Daylane и обнови здесь. После изменений и не реже раза в неделю обновляй этот список.')}
+ catch{await daylaneMessage('Напоминания не обновлены','Проверь связь, ключ GitHub и разрешение уведомлений Scriptable. Ранее назначенные уведомления могли сохраниться; после восстановления связи обнови список.')}
+}
 
 // Daylane widget for Scriptable on iPhone / iPad.
 // Network: GET only, fixed GitHub repository. Secret: Scriptable Keychain only.
@@ -102,11 +135,12 @@ async function daylaneMain(){
  if(config.runsInApp){
   if(!Keychain.contains(DAYLANE_KEY)){snapshot=await daylaneConnect();if(!snapshot){Script.complete();return}}
   const menu=new Alert();menu.title='Daylane — виджеты';menu.message='Выбери предпросмотр. Для экрана «Домой» добавь виджет Scriptable и укажи этот сценарий.';
-  for(const label of ['Дела на сегодня','Трекер привычек','На полях','Сменить ключ','Отключить виджеты'])menu.addAction(label);menu.addCancelAction('Закрыть');const choice=await menu.presentSheet();if(choice<0){Script.complete();return}
-  if(choice===4){Keychain.remove(DAYLANE_KEY);try{const {fm,path}=daylaneCache();if(fm.fileExists(path))fm.remove(path)}catch{}await daylaneMessage('Отключено','Ключ и сохранённая копия виджета удалены из Scriptable. Данные планера сохранены.');Script.complete();return}
+  for(const label of ['Дела на сегодня','Трекер привычек','На полях','Сменить ключ','Отключить виджеты','Напоминания телефона'])menu.addAction(label);menu.addCancelAction('Закрыть');const choice=await menu.presentSheet();if(choice<0){Script.complete();return}
+  if(choice===5){await daylanePhoneMenu();Script.complete();return}
+  if(choice===4){if(Keychain.contains(DAYLANE_PHONE_KEY)){await daylaneClearPhone();Keychain.remove(DAYLANE_PHONE_KEY)}Keychain.remove(DAYLANE_KEY);try{const {fm,path}=daylaneCache();if(fm.fileExists(path))fm.remove(path)}catch{}await daylaneMessage('Отключено','Ключ и сохранённая копия виджета удалены из Scriptable. Данные планера сохранены.');Script.complete();return}
   if(choice===3){snapshot=await daylaneConnect();if(!snapshot){Script.complete();return}kind='today'}else kind=['today','habits','queue'][choice];
  }
- let status='';if(Keychain.contains(DAYLANE_KEY))try{snapshot=await daylaneRead(Keychain.get(DAYLANE_KEY));daylaneSave(snapshot)}catch(error){snapshot=snapshot||daylaneCached();status=error.message==='auth'?'Обнови ключ в Scriptable':error.message==='missing'?'Дождись синхронизации':'Нет связи · сохранённая копия'}
+ let status='';if(Keychain.contains(DAYLANE_KEY))try{snapshot=await daylaneRead(Keychain.get(DAYLANE_KEY));daylaneSave(snapshot);if(Keychain.contains(DAYLANE_PHONE_KEY)){try{await daylaneSyncPhone(snapshot)}catch{status='Напоминания не обновлены'}}}catch(error){snapshot=snapshot||daylaneCached();status=error.message==='auth'?'Обнови ключ в Scriptable':error.message==='missing'?'Дождись синхронизации':'Нет связи · сохранённая копия'}
  const widget=daylaneRender(snapshot,kind,status);Script.setWidget(widget);if(config.runsInApp)await widget.presentMedium();Script.complete();
 }
 await daylaneMain();

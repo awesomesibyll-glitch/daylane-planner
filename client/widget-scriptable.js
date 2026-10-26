@@ -51,11 +51,12 @@ async function daylaneMain(){
  if(config.runsInApp){
   if(!Keychain.contains(DAYLANE_KEY)){snapshot=await daylaneConnect();if(!snapshot){Script.complete();return}}
   const menu=new Alert();menu.title='Daylane — виджеты';menu.message='Выбери предпросмотр. Для экрана «Домой» добавь виджет Scriptable и укажи этот сценарий.';
-  for(const label of ['Дела на сегодня','Трекер привычек','На полях','Сменить ключ','Отключить виджеты'])menu.addAction(label);menu.addCancelAction('Закрыть');const choice=await menu.presentSheet();if(choice<0){Script.complete();return}
-  if(choice===4){Keychain.remove(DAYLANE_KEY);try{const {fm,path}=daylaneCache();if(fm.fileExists(path))fm.remove(path)}catch{}await daylaneMessage('Отключено','Ключ и сохранённая копия виджета удалены из Scriptable. Данные планера сохранены.');Script.complete();return}
+  for(const label of ['Дела на сегодня','Трекер привычек','На полях','Сменить ключ','Отключить виджеты','Напоминания телефона'])menu.addAction(label);menu.addCancelAction('Закрыть');const choice=await menu.presentSheet();if(choice<0){Script.complete();return}
+  if(choice===5){await daylanePhoneMenu();Script.complete();return}
+  if(choice===4){if(Keychain.contains(DAYLANE_PHONE_KEY)){await daylaneClearPhone();Keychain.remove(DAYLANE_PHONE_KEY)}Keychain.remove(DAYLANE_KEY);try{const {fm,path}=daylaneCache();if(fm.fileExists(path))fm.remove(path)}catch{}await daylaneMessage('Отключено','Ключ и сохранённая копия виджета удалены из Scriptable. Данные планера сохранены.');Script.complete();return}
   if(choice===3){snapshot=await daylaneConnect();if(!snapshot){Script.complete();return}kind='today'}else kind=['today','habits','queue'][choice];
  }
- let status='';if(Keychain.contains(DAYLANE_KEY))try{snapshot=await daylaneRead(Keychain.get(DAYLANE_KEY));daylaneSave(snapshot)}catch(error){snapshot=snapshot||daylaneCached();status=error.message==='auth'?'Обнови ключ в Scriptable':error.message==='missing'?'Дождись синхронизации':'Нет связи · сохранённая копия'}
+ let status='';if(Keychain.contains(DAYLANE_KEY))try{snapshot=await daylaneRead(Keychain.get(DAYLANE_KEY));daylaneSave(snapshot);if(Keychain.contains(DAYLANE_PHONE_KEY)){try{await daylaneSyncPhone(snapshot)}catch{status='Напоминания не обновлены'}}}catch(error){snapshot=snapshot||daylaneCached();status=error.message==='auth'?'Обнови ключ в Scriptable':error.message==='missing'?'Дождись синхронизации':'Нет связи · сохранённая копия'}
  const widget=daylaneRender(snapshot,kind,status);Script.setWidget(widget);if(config.runsInApp)await widget.presentMedium();Script.complete();
 }
 await daylaneMain();
