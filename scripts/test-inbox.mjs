@@ -1,0 +1,13 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const ctx=vm.createContext({Date,TextEncoder});for(const file of ['model.js','inbox-model.js','reminder-model.js'])vm.runInContext(fs.readFileSync('client/'+file,'utf8'),ctx);const run=s=>vm.runInContext(s,ctx);
+run(`globalThis.item={kind:'inbox',id:'later-1',date:'2026-10-26',title:'Сходить на выставку',notes:'Билеты и время выбрать позже',category:'rest',done:false,horizon:'none',planDate:null,updatedAt:'2026-10-26T09:00:00Z'}`);
+assert.equal(run('DaylaneModel.validRecord(item)'),true);
+for(const delta of [{title:''},{horizon:'bad'},{horizon:'week',planDate:'2026-10-27'},{horizon:'month',planDate:'2026-10-26'},{horizon:'none',planDate:'2026-10-26'}])assert.equal(run(`DaylaneModel.validRecord({...item,...${JSON.stringify(delta)}})`),false);
+assert.equal(run("DaylaneInbox.period('2027-01-03','week')"),'2026-12-28');assert.equal(run("DaylaneInbox.period('2027-01-31','month')"),'2027-01-01');
+run("globalThis.weekItem={...item,horizon:'week',planDate:'2026-10-26'};globalThis.monthItem={...item,horizon:'month',planDate:'2026-11-01'}");
+assert(run('DaylaneModel.validRecord(weekItem)'));assert(run('DaylaneModel.validRecord(monthItem)'));
+assert(run("DaylaneInbox.matches(weekItem,'week','2026-11-01')"));assert.equal(run("DaylaneInbox.matches(weekItem,'week','2026-11-02')"),false);assert(run("DaylaneInbox.matches(monthItem,'month','2026-11-30')"));
+assert.equal(run("DaylaneModel.tasksForDates([item,weekItem,monthItem],['2026-10-26','2026-11-01']).length"),0);assert.equal(run("DaylaneReminders.upcoming([item],Date.parse('2026-10-26T08:00:00')).length"),0);assert.equal(run('DaylaneReminders.calendar([item]).count'),0);
+run("globalThis.task=DaylaneInbox.schedule(weekItem,'2026-10-29','14:00','15:00',10)");assert(run('DaylaneModel.validRecord(task)'));assert.equal(run('task.id'),run('item.id'));assert.equal(run('task.notes'),run('item.notes'));assert.equal(run('task.horizon'),undefined);assert.equal(run("DaylaneModel.tasksForDates([task],['2026-10-29']).length"),1);assert.equal(run("DaylaneInbox.schedule(item,'2026-10-29','15:00','14:00')"),null);assert.equal(run("DaylaneInbox.schedule(task,'2026-10-30','09:00','10:00')"),null);
+assert(run('DaylaneModel.validRecord(JSON.parse(JSON.stringify(item)))'));
+console.log('PASS: undated ideas, week/month buckets, year boundaries, no calendar/reminder leakage, atomic same-id scheduling, invalid time rejected, backup roundtrip');

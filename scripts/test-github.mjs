@@ -10,3 +10,10 @@ forceConflict=true;a.run('saveLocally([...events,{...events[0],id:"event-2",titl
 offline=true;a.run('saveLocally(events.map(e=>e.id==="event-2"?{...e,title:"Офлайн"}:e))');await settle();assert.equal(a.run('pending.length'),1);offline=false;await a.run('syncNow()');await b.run('syncNow()');assert.equal(b.run('events.find(e=>e.id==="event-2").title'),'Офлайн');
 a.run('saveLocally(events.filter(e=>e.id!=="legacy-1"))');await settle();const c=device([event]);await settle();assert.equal(c.run('events.some(e=>e.id==="legacy-1")'),false);assert.equal(c.run('pending.length'),0);
 assert(calls.includes('PUT'));assert(!JSON.stringify(cloud).includes('test-only'));console.log('PASS: GitHub private storage, UTF-8, phone/tablet sync, SHA conflicts, offline edits, reconnection, stale migration, token excluded from cloud file');
+
+// Unscheduled records use the same private synchronization and move atomically.
+const later={kind:'inbox',id:'inbox-sync',date:'2026-10-26',title:'Идея с телефона',notes:'Сохранить заметку',category:'personal',done:false,horizon:'month',planDate:'2026-11-01',updatedAt:'2026-10-26T09:00:00Z'};
+a.run('saveLocally([...events,'+JSON.stringify(later)+'])');await settle();await b.run('syncNow()');assert.equal(b.run('events.find(e=>e.id==="inbox-sync").kind'),'inbox');
+offline=true;b.run('saveLocally(events.map(e=>e.id==="inbox-sync"?{...e,horizon:"week",planDate:"2026-11-02"}:e))');await settle();offline=false;await b.run('syncNow()');await a.run('syncNow()');assert.equal(a.run('events.find(e=>e.id==="inbox-sync").planDate'),'2026-11-02');
+a.run('saveLocally(events.map(e=>e.id==="inbox-sync"?{kind:"task",id:e.id,title:e.title,notes:e.notes,category:e.category,done:false,date:"2026-11-03",start:"09:00",end:"10:00",reminder:null}:e))');await settle();await b.run('syncNow()');assert.equal(b.run('events.filter(e=>e.id==="inbox-sync").length'),1);assert.equal(b.run('events.find(e=>e.id==="inbox-sync").kind'),'task');
+console.log('PASS: phone/tablet unscheduled tasks, offline week assignment, same-id schedule sync without duplicates');
