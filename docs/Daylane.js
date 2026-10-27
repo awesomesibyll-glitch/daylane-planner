@@ -18,7 +18,16 @@ function validRecord(e){if(!e||!id(e.id)||!date(e.date)||!validSubtasks(e.subtas
 function applies(e,d){if((e.kind&&e.kind!=='task')||d<e.date||e.repeat?.until&&d>e.repeat.until)return false;if(!e.repeat)return d===e.date;const day=new Date(d+'T12:00:00').getDay()||7;if(e.repeat.frequency==='daily')return true;if(e.repeat.frequency==='weekly')return e.repeat.days.includes(day);return d.slice(8)===e.date.slice(8)}
 function tasksForDates(records,days){const set=new Set(days.map(d=>typeof d==='string'?d:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)),out=[];for(const e of records){if(e.kind&&e.kind!=='task')continue;if(!e.repeat){if(set.has(e.date))out.push(e);continue}function occurrence(source,override={}){if(override.cancelled)return;const target=override.date||source;if(!set.has(target))return;out.push({...e,done:false,...(e.subtasks?{subtasks:e.subtasks.map(s=>({...s,done:false}))}:{}),...override,date:target,id:e.id+'@'+source,_seriesId:e.id,_occurrenceDate:source})}for(const d of set)if(applies(e,d)){const x=e.exceptions?.[d]||{};if(!x.date||x.date===d)occurrence(d,x)}for(const [source,x]of Object.entries(e.exceptions||{}))if(x.date&&x.date!==source)occurrence(source,x)}return out}
 function changeOne(series,source,values){return {...series,exceptions:{...(series.exceptions||{}),[source]:{...(series.exceptions?.[source]||{}),...values}}}}
-return {date,id,validRecord,validAttachment,validRepeat,applies,tasksForDates,changeOne};
+function moveTask(records,occurrence,targetDate,startMinute){
+if(!date(targetDate)||!Number.isInteger(startMinute))return null;
+const fresh=tasksForDates(records,[occurrence.date]).find(e=>e.id===occurrence.id);if(!fresh)return null;
+const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3)),duration=minutes(fresh.end)-minutes(fresh.start);
+if(startMinute<0||startMinute+duration>1439)return null;
+const clock=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'),values={date:targetDate,start:clock(startMinute),end:clock(startMinute+duration)},base=records.find(e=>e.id===(fresh._seriesId||fresh.id));
+const changed=fresh._seriesId?changeOne(base,fresh._occurrenceDate,values):{...base,...values};
+return validRecord(changed)?records.map(e=>e.id===base.id?changed:e):null;
+}
+return {moveTask,date,id,validRecord,validAttachment,validRepeat,applies,tasksForDates,changeOne};
 })();
 
 const DaylaneHabits=(()=>{
