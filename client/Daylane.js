@@ -29,7 +29,8 @@ const clock=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStar
 const changed=fresh._seriesId?changeOne(base,fresh._occurrenceDate,values):{...base,...values};
 return validRecord(changed)?records.map(e=>e.id===base.id?changed:e):null;
 }
-return {attachments,moveTask,date,id,validRecord,validAttachment,validRepeat,applies,tasksForDates,changeOne};
+function allSubtasksDone(steps){return !!steps?.length&&steps.every(s=>s.done)}
+return {allSubtasksDone,attachments,moveTask,date,id,validRecord,validAttachment,validRepeat,applies,tasksForDates,changeOne};
 })();
 
 const DaylaneHabits=(()=>{
