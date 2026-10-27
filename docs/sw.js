@@ -1,4 +1,4 @@
-const CACHE='daylane-app-196776c4e365';
+const CACHE='daylane-app-acb12dd9278a';
 const ASSETS=['./move.js','./move.css','./weekly-model.js','./weekly.js','./weekly.css','./month-model.js','./month.js','./month.css','./subtasks.js','./widgets.html','./Daylane.js','./inbox-model.js','./inbox.js','./inbox.css','./','./index.html','./reminder-model.js','./reminders.js','./habit-model.js','./habits.js','./habits.css','./mobile.css','./mobile.js','./model.js','./files.js','./journal.js','./journal.css','./backup.js','./app.js','./sync.js','./github-provider.js','./app-install.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);await cache.addAll(ASSETS.map(url=>new Request(url,{cache:'reload'})));await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('daylane-app-')&&key!==CACHE)await caches.delete(key);await self.clients.claim()})()));

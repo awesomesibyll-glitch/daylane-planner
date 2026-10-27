@@ -18,5 +18,5 @@ function tick(){if(!drag?.active)return;const r=$('scroll').getBoundingClientRec
 function finish(save){if(!drag)return;const old=drag;drag=null;cancelAnimationFrame(frame);try{old.button.releasePointerCapture(old.pointer)}catch{}tray.classList.add('hidden');ghost.classList.add('hidden');document.body.classList.remove('moving-task');if(old.active){setTimeout(()=>{suppressClick=false},0);if(save&&old.valid)commit(old.item,old.date,old.start)}}
 document.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.pointer)return;drag.lastX=e.clientX;drag.lastY=e.clientY;if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6)begin();if(drag.active){e.preventDefault();locate(e.clientX,e.clientY)}},{passive:false});
 document.addEventListener('pointerup',e=>{if(drag&&e.pointerId===drag.pointer)finish(true)});document.addEventListener('pointercancel',()=>finish(false));document.addEventListener('keydown',e=>{if(e.key==='Escape')finish(false)});window.addEventListener('blur',()=>finish(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)finish(false)});
-const prior=render;render=function(){if(drag?.active)finish(false);prior();decorate()};decorate();
+window.daylaneRenderMove=function(){if(drag)finish(false);decorate()};decorate();
 })();
