@@ -1,0 +1,6 @@
+const DaylaneCategories=(()=>{
+const defaults={study:{name:'Учёба',color:'#9783ba',bg:'#eee7f7'},work:{name:'Работа',color:'#b88f9c',bg:'#f8e9ed'},personal:{name:'Личное',color:'#b5a071',bg:'#faf1db'},rest:{name:'Отдых',color:'#7ba597',bg:'#e7f3ed'}};
+function background(color){return '#'+[1,3,5].map(i=>Math.round(parseInt(color.slice(i,i+2),16)*.14+255*.86).toString(16).padStart(2,'0')).join('')}
+function palette(records){const out=Object.fromEntries(Object.entries(defaults).map(([key,c])=>[key,{...c,archived:false}]));for(const r of records)if(r.kind==='category'&&DaylaneModel.validRecord(r))out[r.key]={name:r.title,color:r.color,bg:background(r.color),archived:r.archived};function used(r){if(DaylaneModel.category(r.category)&&!out[r.category])out[r.category]={name:'Категория из другого устройства',color:'#9783ba',bg:'#eee7f7',archived:true};for(const x of Object.values(r.exceptions||{}))used(x);for(const x of r.items||[])used(x);if(r.record)used(r.record)}for(const r of records)used(r);return out}
+function record(key,title,color,archived,date,now){const r={id:key.startsWith('custom-')?key:'category-'+key,key,kind:'category',title:title.trim(),color,archived,date,updatedAt:now};return DaylaneModel.validRecord(r)?r:null}
+return{defaults,background,palette,record};})();

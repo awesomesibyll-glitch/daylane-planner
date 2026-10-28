@@ -37,7 +37,7 @@ function daylaneRender(snapshot,kind,status=''){
   const mark=kind==='habits'?(item.done?'✓':'○'):kind==='queue'?'◇':item.start;
   const badge=row.addText(mark);badge.font=Font.semiboldSystemFont(11);badge.textColor=new Color(kind==='habits'&&item.done?'7b9a86':'a58abd');badge.lineLimit=1;
   const title=row.addText(item.title);title.font=Font.systemFont(12);title.textColor=new Color('65566f');title.lineLimit=1;title.minimumScaleFactor=0.8;
-  if(!small&&kind==='queue'){row.addSpacer();const category=row.addText(DaylaneWidget.categories[item.category]);category.font=Font.systemFont(10);category.textColor=new Color('9b88a6');category.lineLimit=1}
+  if(!small&&kind==='queue'){row.addSpacer();const category=row.addText(snapshot.categoryNames?.[item.category]||DaylaneWidget.categories[item.category]||'Категория');category.font=Font.systemFont(10);category.textColor=new Color('9b88a6');category.lineLimit=1}
   w.addSpacer(6);
  }
  if(!list.length){const t=daylaneText(w,kind==='habits'?'Сегодня привычек нет':kind==='queue'?'Всё распределено':'Свободное время',13,'8b7997');t.lineLimit=2}
