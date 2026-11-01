@@ -39,7 +39,8 @@ const changed=fresh._seriesId?changeOne(base,fresh._occurrenceDate,values):{...b
 return validRecord(changed)?records.map(e=>e.id===base.id?changed:e):null;
 }
 function allSubtasksDone(steps){return !!steps?.length&&steps.every(s=>s.done)}
-return {validEstimate,fitTasks,energyLabels,validEnergy,energyMatches,validActual,actualSummary,withActual,validPlace,category,allSubtasksDone,attachments,moveTask,date,id,validRecord,validAttachment,validRepeat,applies,tasksForDates,changeOne};
+function shiftDay(records,date,ids,delta){if(!DaylaneModel.date(date)||!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length||!Number.isInteger(delta)||!delta||Math.abs(delta)>1439)return null;const tasks=tasksForDates(records,[date]),chosen=ids.map(id=>tasks.find(t=>t.id===id));if(chosen.some(t=>!t||t.done))return null;let next=records;for(const t of chosen){const start=Number(t.start.slice(0,2))*60+Number(t.start.slice(3))+delta;next=moveTask(next,t,date,start);if(!next)return null}return next}
+return {shiftDay,validEstimate,fitTasks,energyLabels,validEnergy,energyMatches,validActual,actualSummary,withActual,validPlace,category,allSubtasksDone,attachments,moveTask,date,id,validRecord,validAttachment,validRepeat,applies,tasksForDates,changeOne};
 })();
 
 const DaylaneHabits=(()=>{
